@@ -1,72 +1,58 @@
-# Django + SQLAlchemy + Kafka App
+# Django + SQLAlchemy + Kafka (KRaft & Postgres Stack)
 
-A highly decoupled boilerplate combining **Django views**, a custom scoped-session **SQLAlchemy** layer, and an event-driven setup using **Apache Kafka** (KRaft mode).
+This setup couples a custom scoped-session SQLAlchemy infrastructure with manual Kafka commit controls to achieve highly-resilient, **at-least-once** event streaming delivery.
 
-## 🛠️ Bash Requirements & System Setup
+## 🛠️ Bash Requirements & Environment Setup
 
-Execute these steps in your terminal to initialize the environment and backends.
+Run these sequentially to orchestrate your local environment.
 
-### 1. Environment & Dependencies Setup
+### 1. Project Dependencies
 ```bash
-# Set up virtual environment
+# Setup python isolation env
 python3 -m venv venv
-source venv/bin/activate  # Windows users: .\venv\Scripts\activate
+source venv/bin/activate  # Windows: .\venv\Scripts\activate
 
-# Install required stack
+# Add app components
 pip install --upgrade pip
 pip install django sqlalchemy psycopg2-binary confluent-kafka
 ```
 
-### 2. Infrastructure Deployment (Kafka Container)
+### 2. Microservice Stack Deployment (Kafka & PostgreSQL)
 ```bash
-# Start Kafka in the background via KRaft Mode (No Zookeeper required)
+# Stand up database and stream clusters simultaneously
 docker compose up -d
 
-# Verify that the container is up and healthy
+# Verify both structures pass verification rules
 docker compose ps
 ```
 
 ---
 
-## 🏗️ Project Components Reference
+## 🚀 Execution & System Lifecycles
 
-### Data Engine Layer
-* **`myproject/sqlalchemy_base.py`**: Configures engines, session hooks, and the `Base` declarative meta model.
-* **`myproject/middleware.py`**: Intercepts queries to bind database sessions right into `request.db` per web request.
+You will need **three** concurrent terminal shells to watch the pipeline execute in real-time.
 
-### Stream Event Layer
-* **`core/kafka.py`**: Holds low-level Producer logic and the long-polling loop wrapper for the database tracker.
-* **`core/management/commands/run_consumer.py`**: Exposes the Kafka polling system right into native Django CLI operations.
-
----
-
-## 🚀 Execution & Operational Workflows
-
-You will need **three** terminal windows running concurrently to interact with this application locally.
-
-### Terminal 1: Database Generation & Web App Host
-If your target schema does not exist yet, trigger structural creation via SQLAlchemy before serving the endpoints:
+### Terminal 1: Schema Construction & Server Binding
+Wait roughly 5 seconds for Postgres to clear health checks, then initialize data structures before spawning the app server:
 ```bash
-# Build data layer
+# Build table blueprints directly via SQLAlchemy Models
 python -c "from myproject.sqlalchemy_base import engine, Base; from core.models_sqla import Item; Base.metadata.create_all(bind=engine)"
 
-# Spin up Django
+# Bind local developer server
 python manage.py runserver
 ```
 
-### Terminal 2: Background Consumer Worker Daemon
-Run this native management command to dynamically intercept write operations occurring on your database:
+### Terminal 2: Manual Commit Worker Daemon
 ```bash
 source venv/bin/activate
 python manage.py run_consumer
 ```
 
-### Terminal 3: Infrastructure Lifecycle Management
-Use this window to look under the hood or tear down infrastructure when your sessions finish:
+### Terminal 3: Log Extraction & Teardown Routine
 ```bash
-# Tail live stream container outputlogs
+# Target real-time streaming feedback
 docker compose logs -f kafka
 
-# Complete teardown of active messaging cluster
+# Full application component teardown
 docker compose down
 ```
